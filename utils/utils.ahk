@@ -1,0 +1,84 @@
+; ============================================================
+; 工具函数模块
+; 提供 JSON 解析、文件到剪贴板、鼠标坐标等通用能力
+; ============================================================
+
+; 解析JSON字符串为AHK对象
+JSON_parse(str) {
+    htmlfile := ComObject('htmlfile')
+    htmlfile.write('<meta http-equiv="X-UA-Compatible" content="IE=edge">')
+    return htmlfile.parentWindow.JSON.parse(str)
+}
+
+; 将文件路径复制为剪贴板文件（支持资源管理器粘贴）
+FileToClipboard(PathToCopy) {
+    loop files, PathToCopy
+        PathToCopy := A_LoopFileFullPath
+    hPath := DllCall("GlobalAlloc", "UInt", 0x42, "UInt", 20 + (StrPut(PathToCopy) + 22), "UPtr")
+    pPath := DllCall("GlobalLock", "Ptr", hPath, "UPtr")
+    NumPut("UInt", 20, pPath)
+    NumPut("UInt", 1, pPath, 16)
+    StrPut(PathToCopy, pPath + 20)
+    DllCall("GlobalUnlock", "UPtr", hPath)
+    DllCall("OpenClipboard", "Ptr", 0)
+    DllCall("EmptyClipboard")
+    DllCall("SetClipboardData", "UInt", 0xF, "Ptr", hPath)
+    DllCall("CloseClipboard")
+}
+
+; 获取当前鼠标相对于指定窗口的位置
+GetClientMousePos(title) {
+    CoordMode('Mouse', 'Screen')
+    winX := 0
+    winY := 0
+    WinGetPos(&winX, &winY, &title)
+    return {
+        x: winX,
+        y: winY,
+    }
+}
+
+; 获取配置文件的正确路径（支持从 exe 所在的 dist/ 目录自动向上回退到项目根目录寻找）
+GetConfigPath(fileName) {
+    path := A_ScriptDir "\config"
+    if !DirExist(path) && DirExist(A_ScriptDir "\..\config") {
+        path := A_ScriptDir "\..\config"
+    }
+    return path . "\" . fileName
+}
+
+; 从 config.ini 读取 [Settings] 小节的配置值
+GetSetting(key, default := "") {
+    iniFile := GetConfigPath("config.ini")
+    if !FileExist(iniFile)
+        return default
+    try {
+        return IniRead(iniFile, "Settings", key, default)
+    } catch {
+        return default
+    }
+}
+
+; 从 config.ini 读取 [Hotkeys] 小节的配置值
+GetHotkeyState(key, default := "1") {
+    iniFile := GetConfigPath("config.ini")
+    if !FileExist(iniFile)
+        return default
+    try {
+        return IniRead(iniFile, "Hotkeys", key, default)
+    } catch {
+        return default
+    }
+}
+
+; 从指定凭据文件读取配置值
+GetCredential(iniFileName, section, key, default := "") {
+    iniFile := GetConfigPath(iniFileName)
+    if !FileExist(iniFile)
+        return default
+    try {
+        return IniRead(iniFile, section, key, default)
+    } catch {
+        return default
+    }
+}
