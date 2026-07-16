@@ -137,7 +137,7 @@
         try testToken := resTransObj.data
 
         if (testToken != "" && InStr(testToken, "JWT-") == 1) {
-            SendText(testToken)
+            SendTextViaClipboard(testToken)
         } else {
             errTrans := "转换测试 Token 失败"
             try {

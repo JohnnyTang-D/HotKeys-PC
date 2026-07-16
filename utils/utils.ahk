@@ -82,3 +82,15 @@ GetCredential(iniFileName, section, key, default := "") {
         return default
     }
 }
+
+; 使用剪贴板安全、秒速发送长文本（可完美免疫任何中文输入法拦截与管理员权限隔离）
+SendTextViaClipboard(text) {
+    savedClip := ClipboardAll() ; 备份用户当前剪贴板的完整内容（包含图片、格式等二进制数据）
+    A_Clipboard := ""           ; 清空剪贴板以供等待
+    A_Clipboard := text
+    if ClipWait(1) {
+        SendInput("^v")         ; 发送 Ctrl + V 粘贴
+        Sleep(150)              ; 稍微等待目标程序完成粘贴接收，防止提前还原剪贴板
+    }
+    A_Clipboard := savedClip    ; 还原剪贴板
+}

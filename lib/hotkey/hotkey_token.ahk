@@ -85,7 +85,7 @@
             try flag := resObj.flag
             
             if (flag == "T") {
-                SendText(resObj.data.refresh_token)
+                SendTextViaClipboard(resObj.data.refresh_token)
             } else {
                 ; 接口失败时，安全读取 errorInfo 或 data 字符串以展示错误原因
                 errMsg := "未知错误"

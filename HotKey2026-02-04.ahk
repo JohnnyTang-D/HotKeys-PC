@@ -4,7 +4,7 @@
 ; ---- Ahk2Exe 编译器指令，用于生成带属性信息的单个 exe ----
 ;@Ahk2Exe-SetName HotKey2026
 ;@Ahk2Exe-SetDescription HotKey 快捷键管理工具
-;@Ahk2Exe-SetVersion 1.0.3
+;@Ahk2Exe-SetVersion 1.0.6
 ;@Ahk2Exe-SetCopyright Copyright (c) 2026
 
 ; ---- 基础库 (必须最先加载) ----

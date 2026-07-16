@@ -31,6 +31,6 @@
             WinActivate("ahk_id " prev_hwnd)
             WinWaitActive("ahk_id " prev_hwnd, , 1)
         }
-        SendInput(git_command)
+        SendTextViaClipboard(git_command)
     }
 }
