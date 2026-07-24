@@ -23,133 +23,93 @@
         return
     }
 
-    ; 1. 初始化 COM htmlfile 用于执行 JScript 提取与结构化 JSON 序列化
-    js := ComObject("htmlfile")
-    js.write('<meta http-equiv="X-UA-Compatible" content="IE=edge">')
-    js.parentWindow.execScript("
-    (LTrim
-        function getCaptchaVal(jsonStr) {
-            try {
-                var obj = JSON.parse(jsonStr);
-                return obj.choices[0].message.content.trim();
-            } catch(e) { return ''; }
-        }
-        function getJwtToken(jsonStr) {
-            try {
-                var obj = JSON.parse(jsonStr);
-                return obj.data;
-            } catch(e) { return ''; }
-        }
-        function buildPayload(imageUrl, prompt) {
-            var payload = {
-                model: 'glm-4v-flash',
-                messages: [{
-                    role: 'user',
-                    content: [
-                        { type: 'image_url', image_url: { url: imageUrl } },
-                        { type: 'text', text: prompt }
-                    ]
-                }]
-            };
-            return JSON.stringify(payload);
-        }
-        function buildLoginPayload(loginId, password, captchaVal, captchaUuid, fingerprint) {
-            var payload = {
-                loginId: loginId,
-                password: password,
-                captchaVal: captchaVal,
-                captchaUuid: captchaUuid,
-                fingerprint: fingerprint
-            };
-            return JSON.stringify(payload);
-        }
-    )",
-    "JScript")
-
-    ; 2. 获取 Captcha UUID
+    ; 1. 获取 Captcha UUID
     try {
         resText := RongyibanRequest("GET", "/captcha/pcruuid")
-        captchaUuid := JSON_parse(resText).data.captchaUuid
+        parsedObj := JSON_parse(resText)
+        captchaUuid := GetJsonVal(parsedObj, "data", "captchaUuid")
     } catch Error as e {
-        MsgBox("获取 Captcha UUID 失败：`n`n" e.Message)
+        MsgBox("获取 Captcha UUID 异常：`n`n" e.Message, "错误", "Icon!")
         return
     }
 
-    ; 3. 获取验证码图片数据并转换为 Base64
+    ; 2. 获取验证码图片数据并转换为 Base64
     try {
         imgData := RongyibanRequest("GET", "/captcha/pcrimg/" . captchaUuid, , , true)
         cleanBase64 := BinToBase64(imgData)
     } catch Error as e {
-        MsgBox("下载验证码图片失败：`n`n" e.Message)
+        MsgBox("下载验证码图片失败：`n`n" e.Message, "错误", "Icon!")
         return
     }
 
-    ; 4. 调用大模型识别验证码
+    ; 3. 调用大模型识别验证码
     try {
         imageUrlVal := "data:image/png;base64," . cleanBase64
-        payload := js.parentWindow.buildPayload(imageUrlVal, "请分析这张图片的4位验证码,直接给出结果")
-        resModelText := SendHttpRequest("POST", "https://open.bigmodel.cn/api/paas/v4/chat/completions", 
+        payload := JSON_stringify({
+            model: "glm-4v-flash",
+            messages: [{
+                role: "user",
+                content: [{ type: "image_url", image_url: { url: imageUrlVal } }, { type: "text", text: "请分析这张图片的4位验证码,直接给出结果" }]
+            }]
+        })
+        resModelText := SendHttpRequest("POST", "https://open.bigmodel.cn/api/paas/v4/chat/completions",
             Map("Content-Type", "application/json", "Authorization", "Bearer " . apiKey), payload)
 
-        captchaVal := js.parentWindow.getCaptchaVal(resModelText)
-        if (captchaVal == "") {
-            MsgBox("大模型返回数据解析为空，返回数据：`n`n" resModelText)
-            return
-        }
+        resModelObj := JSON_parse(resModelText)
+        captchaVal := Trim(GetJsonVal(resModelObj, "choices", 1, "message", "content"))
     } catch Error as e {
-        MsgBox("大模型识别验证码请求失败：`n`n" e.Message)
+        MsgBox("大模型识别验证码请求失败：`n`n" e.Message, "错误", "Icon!")
         return
     }
 
-    ; 5. 模拟登录并获取 JWT Token
+    ; 4. 模拟登录并获取 JWT Token
     try {
         cipher := AES_ECB_Encrypt(p, "www.easipass.com")
-        loginPayload := js.parentWindow.buildLoginPayload(
-            u, cipher, captchaVal, captchaUuid,
-            "lYUB2dUYQZg1WI2wiQZseUCLR3FJPLy6CxzuiR2g6IqH/0E4SlCvd9aYlfkd8O7D"
-        )
+        loginPayload := JSON_stringify({
+            loginId: u,
+            password: cipher,
+            captchaVal: captchaVal,
+            captchaUuid: captchaUuid,
+            fingerprint: "lYUB2dUYQZg1WI2wiQZseUCLR3FJPLy6CxzuiR2g6IqH/0E4SlCvd9aYlfkd8O7D"
+        })
         resLoginText := RongyibanRequest("POST", "/auth/login?captchaVal=" . captchaVal . "&captchaUuid=" . captchaUuid,
             Map("Content-Type", "application/json"), loginPayload)
 
-        jwtToken := js.parentWindow.getJwtToken(resLoginText)
+        resLoginObj := JSON_parse(resLoginText)
+        jwtToken := GetJsonVal(resLoginObj, "data")
+
         if (jwtToken == "" || InStr(jwtToken, "JWT-") != 1) {
-            errInfo := "未知错误"
-            try {
-                resLoginObj := JSON_parse(resLoginText)
-                if (resLoginObj.errorInfo != "")
-                    errInfo := resLoginObj.errorInfo
-                else if (resLoginObj.message != "")
-                    errInfo := resLoginObj.message
-            }
-            MsgBox("登录获取 JWT 失败：`n`n" errInfo "`n`n接口返回：" resLoginText)
+            errInfo := GetJsonVal(resLoginObj, "errorInfo")
+            if (errInfo == "")
+                errInfo := GetJsonVal(resLoginObj, "message")
+            if (errInfo == "")
+                errInfo := resLoginText
+            MsgBox("登录获取 JWT 失败：`n`n" errInfo "`n`n接口返回：" resLoginText, "提示", "Icon!")
             return
         }
     } catch Error as e {
-        MsgBox("登录接口请求异常：`n`n" e.Message)
+        MsgBox("登录接口请求异常：`n`n" e.Message, "错误", "Icon!")
         return
     }
 
-    ; 6. 使用 JWT Token 换取测试 Token (trans-test-token)
+    ; 5. 使用 JWT Token 换取测试 Token (trans-test-token)
     try {
         resTransText := RongyibanRequest("GET", "/auth/trans-test-token", Map("cm-authorization", jwtToken))
         resTransObj := JSON_parse(resTransText)
-        testToken := ""
-        try testToken := resTransObj.data
+        testToken := GetJsonVal(resTransObj, "data")
 
         if (testToken != "" && InStr(testToken, "JWT-") == 1) {
             SendTextViaClipboard(testToken)
         } else {
-            errTrans := "转换测试 Token 失败"
-            try {
-                if (resTransObj.errorInfo != "")
-                    errTrans := resTransObj.errorInfo
-                else if (resTransObj.message != "")
-                    errTrans := resTransObj.message
-            }
-            MsgBox("转换测试 Token 失败：`n`n" errTrans "`n`n接口返回：" resTransText)
+            errTrans := GetJsonVal(resTransObj, "errorInfo")
+            if (errTrans == "")
+                errTrans := GetJsonVal(resTransObj, "message")
+            if (errTrans == "")
+                errTrans := resTransText
+            MsgBox("转换测试 Token 失败：`n`n" errTrans "`n`n接口返回：" resTransText, "提示", "Icon!")
         }
     } catch Error as e {
-        MsgBox("调用转换测试 Token 接口异常：`n`n" e.Message)
+        MsgBox("调用转换测试 Token 接口异常：`n`n" e.Message, "错误", "Icon!")
     }
 }
 
@@ -160,15 +120,14 @@
 ; 基础网络请求封装
 SendHttpRequest(method, url, headers := "", body := "", returnBinary := false) {
     whr := ComObject("WinHttp.WinHttpRequest.5.1")
-    whr.Option[4] := 0x3300 ; 忽略自签名 SSL 证书错误
-    whr.Open(method, url, true)
+    try whr.Option[4] := 0x3300 ; 忽略自签名 SSL 证书错误
+    whr.Open(method, url, false)
     if (IsObject(headers)) {
         for k, v in headers {
             whr.SetRequestHeader(k, v)
         }
     }
     whr.Send(body)
-    whr.WaitForResponse()
     return returnBinary ? whr.ResponseBody : whr.ResponseText
 }
 
@@ -180,9 +139,31 @@ RongyibanRequest(method, path, headers := "", body := "", returnBinary := false)
 
 ; 二进制 SafeArray 转 Base64
 BinToBase64(binData) {
-    xml := ComObject("MSXML2.DOMDocument.6.0")
-    elem := xml.createElement("tmp")
-    elem.dataType := "bin.base64"
-    elem.nodeTypedValue := binData
-    return StrReplace(elem.text, "`n", "")
+    if IsObject(binData) && (binData is ComValue) {
+        pSA := ComObjValue(binData)
+        ubound := 0
+        if DllCall("oleaut32\SafeArrayGetUBound", "Ptr", pSA, "UInt", 1, "Int*", &ubound) == 0 {
+            cbData := ubound + 1
+            pData := 0
+            if DllCall("oleaut32\SafeArrayAccessData", "Ptr", pSA, "Ptr*", &pData) == 0 {
+                cbBase64 := 0
+                DllCall("crypt32\CryptBinaryToString", "Ptr", pData, "UInt", cbData, "UInt", 0x40000001, "Ptr", 0,
+                    "UInt*", &cbBase64)
+                base64Buf := Buffer(cbBase64 * 2)
+                DllCall("crypt32\CryptBinaryToString", "Ptr", pData, "UInt", cbData, "UInt", 0x40000001, "Ptr",
+                    base64Buf, "UInt*", &cbBase64)
+                DllCall("oleaut32\SafeArrayUnaccessData", "Ptr", pSA)
+                return StrReplace(StrReplace(StrGet(base64Buf, "UTF-16"), "`r", ""), "`n", "")
+            }
+        }
+    }
+    try {
+        xml := ComObject("MSXML2.DOMDocument.6.0")
+        elem := xml.createElement("tmp")
+        elem.dataType := "bin.base64"
+        elem.nodeTypedValue := binData
+        return StrReplace(StrReplace(elem.text, "`r", ""), "`n", "")
+    } catch {
+        return ""
+    }
 }

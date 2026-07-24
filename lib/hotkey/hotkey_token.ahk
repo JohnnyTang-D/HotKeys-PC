@@ -71,13 +71,12 @@
         encPass := UrlEncode(DES_CBC_Encrypt(creds.password))
         whr := ComObject("WinHttp.WinHttpRequest.5.1")
         requestUrl := portalTokenUrl . "?username=" . encUser . "&password=" . encPass . "&client_id=" . portalClientId
-        whr.Open("GET", requestUrl, true)
+        whr.Open("GET", requestUrl, false)
         whr.SetRequestHeader("User-Agent",
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0'
         )
         whr.Send()
-        whr.WaitForResponse()
-        Sleep(350)
+        Sleep(150)
         
         try {
             resObj := JSON_parse(whr.ResponseText)

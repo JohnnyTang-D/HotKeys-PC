@@ -3,11 +3,47 @@
 ; 提供 JSON 解析、文件到剪贴板、鼠标坐标等通用能力
 ; ============================================================
 
-; 解析JSON字符串为AHK对象
-JSON_parse(str) {
-    htmlfile := ComObject('htmlfile')
-    htmlfile.write('<meta http-equiv="X-UA-Compatible" content="IE=edge">')
-    return htmlfile.parentWindow.JSON.parse(str)
+; 调用开源标准库 lib/JSON.ahk 进行解析与序列化
+JSON_parse(src) {
+    if (src == "")
+        return ""
+    try {
+        return JSON.parse(src)
+    } catch {
+        return ""
+    }
+}
+
+JSON_stringify(val) {
+    return JSON.stringify(val)
+}
+
+; 统一安全提取对象/Map/Array中的值（支持多级链式提取，不存在或类型不符时安全返回空字符串）
+GetJsonVal(target, keys*) {
+    curr := target
+    for k in keys {
+        if !IsObject(curr)
+            return ""
+        if (curr is Map) {
+            if curr.Has(k)
+                curr := curr[k]
+            else
+                return ""
+        } else if (curr is Array) {
+            if (IsNumber(k) && k >= 1 && k <= curr.Length)
+                curr := curr[k]
+            else
+                return ""
+        } else if (curr is Object) {
+            if HasProp(curr, k)
+                curr := curr.%k%
+            else
+                return ""
+        } else {
+            return ""
+        }
+    }
+    return IsObject(curr) ? curr : String(curr)
 }
 
 ; 将文件路径复制为剪贴板文件（支持资源管理器粘贴）

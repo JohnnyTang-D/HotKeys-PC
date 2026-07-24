@@ -48,7 +48,7 @@ if %ERRORLEVEL% equ 0 (
     echo 正在尝试自动关闭运行中的进程以防止写入冲突...
     taskkill /f /im "%OUT_EXE%" >nul 2>&1
     :: 等待一秒确保文件锁完全释放
-    timeout /t 1 /nobreak >nul
+    ping 127.0.0.1 -n 2 >nul
 )
 echo [OK] 进程冲突检查完毕。
 echo.

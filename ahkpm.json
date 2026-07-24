@@ -1,0 +1,10 @@
+{
+  "name": "JohnnyTang-D/HotKeys-PC",
+  "version": "1.0.9",
+  "description": "HotKey 快捷键管理工具",
+  "author": "JohnnyTang",
+  "license": "MIT",
+  "dependencies": {
+    "github.com/thqby/ahk2_lib": "^2.0.0"
+  }
+}
