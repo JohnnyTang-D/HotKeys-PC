@@ -83,50 +83,79 @@ GetConfigPath(fileName) {
     return path . "\" . fileName
 }
 
-; 从 config.ini 读取 [Settings] 小节的配置值
-GetSetting(key, default := "") {
-    iniFile := GetConfigPath("config.ini")
+; 兼容 UTF-8 (包含无 BOM) 编码读取 INI 指定配置项，解决 Windows 原生 API (IniRead) 读取无 BOM 的 UTF-8 文件时发生的中文乱码问题
+ReadIniUTF8(iniFile, section, key, default := "") {
     if !FileExist(iniFile)
         return default
-    try {
-        return IniRead(iniFile, "Settings", key, default)
-    } catch {
-        return default
-    }
-}
 
-; 从 config.ini 读取 [Hotkeys] 小节的配置值
-GetHotkeyState(key, default := "1") {
-    iniFile := GetConfigPath("config.ini")
-    if !FileExist(iniFile)
-        return default
     try {
-        return IniRead(iniFile, "Hotkeys", key, default)
-    } catch {
-        return default
-    }
-}
+        content := FileRead(iniFile, "UTF-8")
+        currentSec := ""
+        targetSec := StrLower(Trim(section))
+        targetKey := StrLower(Trim(key))
 
-; 从指定凭据文件读取配置值
-GetCredential(iniFileName, section, key, default := "") {
-    iniFile := GetConfigPath(iniFileName)
-    if !FileExist(iniFile)
-        return default
-    try {
-        return IniRead(iniFile, section, key, default)
-    } catch {
-        return default
-    }
-}
+        loop parse, content, "`n", "`r" {
+            line := Trim(A_LoopField)
+            if (line == "" || SubStr(line, 1, 1) == ";" || SubStr(line, 1, 1) == "#")
+                continue
 
-; 使用剪贴板安全、秒速发送长文本（可完美免疫任何中文输入法拦截与管理员权限隔离）
-SendTextViaClipboard(text) {
-    savedClip := ClipboardAll() ; 备份用户当前剪贴板的完整内容（包含图片、格式等二进制数据）
-    A_Clipboard := ""           ; 清空剪贴板以供等待
-    A_Clipboard := text
-    if ClipWait(1) {
-        SendInput("^v")         ; 发送 Ctrl + V 粘贴
-        Sleep(150)              ; 稍微等待目标程序完成粘贴接收，防止提前还原剪贴板
+            if (SubStr(line, 1, 1) == "[" && SubStr(line, -1) == "]") {
+                currentSec := StrLower(Trim(SubStr(line, 2, StrLen(line) - 2)))
+                continue
+            }
+
+            if (currentSec == targetSec) {
+                eqPos := InStr(line, "=")
+                if (eqPos > 1) {
+                    k := StrLower(Trim(SubStr(line, 1, eqPos - 1)))
+                    if (k == targetKey) {
+                        val := Trim(SubStr(line, eqPos + 1))
+                        ; 移除行尾以空格+分号分隔的注释
+                        semiPos := InStr(val, A_Space Chr(59))
+                            if (semiPos > 0) {
+                                val := Trim(SubStr(val, 1, semiPos - 1))
+                            }
+                            return val
+                        }
+                    }
+                }
+            }
+        }
+
+        ; 若文本解析未匹配到，尝试使用原生 IniRead 兜底
+        try {
+            return IniRead(iniFile, section, key, default)
+        } catch {
+            return default
+        }
     }
-    A_Clipboard := savedClip    ; 还原剪贴板
-}
+
+    ; 从 config.ini 读取 [Settings] 小节的配置值
+    GetSetting(key, default := "") {
+        iniFile := GetConfigPath("config.ini")
+        return ReadIniUTF8(iniFile, "Settings", key, default)
+    }
+
+    ; 从 config.ini 读取 [Hotkeys] 小节的配置值
+    GetHotkeyState(key, default := "1") {
+        iniFile := GetConfigPath("config.ini")
+        return ReadIniUTF8(iniFile, "Hotkeys", key, default)
+    }
+
+    ; 从指定凭据文件读取配置值
+    GetCredential(iniFileName, section, key, default := "") {
+        iniFile := GetConfigPath(iniFileName)
+        return ReadIniUTF8(iniFile, section, key, default)
+    }
+
+    ; 使用剪贴板安全、秒速发送长文本（可完美免疫任何中文输入法拦截与管理员权限隔离）
+    SendTextViaClipboard(text) {
+        savedClip := ClipboardAll() ; 备份用户当前剪贴板的完整内容（包含图片、格式等二进制数据）
+        A_Clipboard := ""           ; 清空剪贴板以供等待
+        A_Clipboard := text
+        if ClipWait(1) {
+            SendInput("^v")         ; 发送 Ctrl + V 粘贴
+            Sleep(150)              ; 稍微等待目标程序完成粘贴接收，防止提前还原剪贴板
+        }
+        A_Clipboard := savedClip    ; 还原剪贴板
+    }

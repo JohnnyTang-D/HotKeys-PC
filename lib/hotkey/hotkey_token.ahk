@@ -79,23 +79,32 @@
         Sleep(150)
         
         try {
-            resObj := JSON_parse(whr.ResponseText)
-            flag := ""
-            try flag := resObj.flag
+            resText := whr.ResponseText
+            resObj := JSON_parse(resText)
+            flag := GetJsonVal(resObj, "flag")
             
             if (flag == "T") {
-                SendTextViaClipboard(resObj.data.refresh_token)
-            } else {
-                ; 接口失败时，安全读取 errorInfo 或 data 字符串以展示错误原因
-                errMsg := "未知错误"
-                try errMsg := resObj.errorInfo
-                if (errMsg == "" || errMsg == "未知错误") {
-                    try errMsg := resObj.data
+                tokenVal := GetJsonVal(resObj, "data", "refresh_token")
+                if (tokenVal == "")
+                    tokenVal := GetJsonVal(resObj, "data")
+                if (tokenVal != "") {
+                    SendTextViaClipboard(tokenVal)
+                } else {
+                    MsgBox("获取 Token 成功但返回 Token 字段为空！`n`n请求地址：`n" requestUrl "`n`n接口完整返回：`n" resText, "提示", "Icon!")
                 }
-                MsgBox("获取 Token 失败：`n`n" errMsg)
+            } else {
+                ; 调试模式：详细打印失败原因、请求地址与接口完整响应内容
+                errMsg := GetJsonVal(resObj, "errorInfo")
+                if (errMsg == "")
+                    errMsg := GetJsonVal(resObj, "message")
+                if (errMsg == "")
+                    errMsg := GetJsonVal(resObj, "data")
+                if (errMsg == "")
+                    errMsg := (resText != "") ? resText : "未知错误"
+                MsgBox("获取 Token 失败：`n`n错误信息：" errMsg "`n`n请求地址：`n" requestUrl "`n`n接口完整返回数据：`n" resText, "调试信息 - 接口异常", "Icon!")
             }
         } catch Error as e {
-            MsgBox("解析接口数据异常：`n`n" e.Message "`n`n接口返回：" whr.ResponseText)
+            MsgBox("解析接口数据异常：`n`n" e.Message "`n`n请求地址：`n" requestUrl "`n`n接口完整返回：`n" whr.ResponseText, "调试信息 - 解析捕获", "Icon!")
         }
     }
 
