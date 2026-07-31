@@ -120,7 +120,9 @@
 ; 基础网络请求封装
 SendHttpRequest(method, url, headers := "", body := "", returnBinary := false) {
     whr := ComObject("WinHttp.WinHttpRequest.5.1")
+    try whr.Option[0] := 0 ; 强制读取系统/IE 当前最新默认代理设置，避免开机自启旧进程代理失效
     try whr.Option[4] := 0x3300 ; 忽略自签名 SSL 证书错误
+    try whr.SetTimeouts(5000, 5000, 10000, 10000) ; 设置域名解析、连接、发送、接收超时时间 (毫秒)
     whr.Open(method, url, false)
     if (IsObject(headers)) {
         for k, v in headers {

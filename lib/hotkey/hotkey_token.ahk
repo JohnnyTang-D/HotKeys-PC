@@ -70,6 +70,9 @@
         encUser := UrlEncode(DES_CBC_Encrypt(creds.username))
         encPass := UrlEncode(DES_CBC_Encrypt(creds.password))
         whr := ComObject("WinHttp.WinHttpRequest.5.1")
+        try whr.Option[0] := 0 ; 强制读取系统/IE 当前最新默认代理设置
+        try whr.Option[4] := 0x3300 ; 忽略自签名 SSL 证书错误
+        try whr.SetTimeouts(5000, 5000, 10000, 10000) ; 设置超时
         requestUrl := portalTokenUrl . "?username=" . encUser . "&password=" . encPass . "&client_id=" . portalClientId
         whr.Open("GET", requestUrl, false)
         whr.SetRequestHeader("User-Agent",
