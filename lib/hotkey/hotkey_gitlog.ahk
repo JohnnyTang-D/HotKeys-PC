@@ -26,7 +26,7 @@
         eDate := DateAdd(sDate, 1, "days")
         startStr := FormatTime(sDate, "yyyy-MM-dd")
         endStr := FormatTime(eDate, "yyyy-MM-dd")
-        git_command := 'git --no-pager log --all --author="' gitAuthor '" --since="' startStr ' 09:00" --until="' endStr ' 09:00" --pretty=format:"%B" --no-merges'
+        git_command := 'git --no-pager log --all --date-order --author="' gitAuthor '" --since="' startStr ' 09:00" --until="' endStr ' 09:00" --pretty=format:"%B" --no-merges --reverse'
         if WinExist("ahk_id " prev_hwnd) {
             WinActivate("ahk_id " prev_hwnd)
             WinWaitActive("ahk_id " prev_hwnd, , 1)

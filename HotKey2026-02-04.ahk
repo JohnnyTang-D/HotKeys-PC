@@ -5,7 +5,7 @@ SetWorkingDir(A_ScriptDir) ; 强制将工作目录设置为 EXE 所在目录，�
 ; ---- Ahk2Exe 编译器指令，用于生成带属性信息的单个 exe ----
 ;@Ahk2Exe-SetName HotKey2026
 ;@Ahk2Exe-SetDescription HotKey 快捷键管理工具
-;@Ahk2Exe-SetVersion 1.1.9
+;@Ahk2Exe-SetVersion 1.1.10
 ;@Ahk2Exe-SetCopyright Copyright (c) 2026
 
 ; ---- 基础包与依赖模块 (ahkpm) ----
