@@ -40,7 +40,7 @@ App_MsEdge=1      ; 是否启用 Edge 应用热键
 
 [Settings]
 apiKey=your_bigmodel_api_key_here               ; 智谱清言大模型 API Key（用于 Win+W 验证码识别）
-rongyibanBaseUrl=https://172.16.2.93/cm-portal/v1 ; 融亿办接口基地址
+rongyibanBaseUrl=https://192.168.129.181/cm-portal/v1 ; 融亿办接口基地址
 portalTokenUrl=http://192.168.114.43/...        ; 统一门户 Token 获取接口
 portalClientId=vgES727DFqpr5LNttxf6oA%3D%3D      ; 统一门户 Client ID
 gitAuthor=your_name_here                        ; 用于 Win+Q 过滤 Git 提交记录的作者姓名
