@@ -115,7 +115,7 @@ FetchRongyibanCaptcha(config, context) {
 
 RecognizeRongyibanCaptcha(config, captcha, context) {
     payload := JSON_stringify({
-        model: "glm-4v-flash",
+        model: "glm-4.6v-flash",
         messages: [{ role: "user",
             content: [{ type: "image_url", image_url: { url: "data:image/png;base64," captcha.base64 } }, { type: "text",
                 text: "识别图片中的4位验证码。只输出这4位英文字母或数字，保留大小写，不要解释、前缀、标点、空格或 Markdown。无法确定时返回空字符串，不要猜测或列出多个答案。" }] }]
